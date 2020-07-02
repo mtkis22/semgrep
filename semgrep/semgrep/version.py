@@ -1,13 +1,16 @@
+import logging
 import os
 import time
 from pathlib import Path
 from typing import Optional
 
+logger = logging.getLogger(__name__)
+
+
 from packaging.version import InvalidVersion
 from packaging.version import Version
 
 from semgrep import constants
-from semgrep import util
 
 VERSION_CHECK_URL = str(
     os.environ.get(
@@ -38,18 +41,18 @@ def _fetch_latest_version(
             timeout=timeout,
         )
     except Exception as e:
-        util.debug_print(f"Fetching latest version failed to connect: {e}")
+        logging.debug(f"Fetching latest version failed to connect: {e}")
         return None
     else:
         if resp.status_code != requests.codes.OK:
-            util.debug_print(
+            logging.debug(
                 f"Fetching latest version received HTTP error code: {resp.status_code}"
             )
             return None
         try:
             resp_json = resp.json()
         except ValueError:
-            util.debug_print("Fetching latest version received invalid JSON")
+            logging.debug("Fetching latest version received invalid JSON")
             return None
         else:
             return str(resp_json["latest"])
@@ -67,17 +70,17 @@ def _get_version_from_cache(version_cache_path: Path) -> Optional[str]:
                 # Treat time as integer seconds so no need to deal with str float conversion
                 timestamp = int(timestamp_str)
             except ValueError:
-                util.debug_print(f"Version cache invalid timestamp: {timestamp_str}")
+                logging.debug(f"Version cache invalid timestamp: {timestamp_str}")
                 return None
 
             one_day = 86400
             if now - timestamp > one_day:
-                util.debug_print(f"Version cache expired: {timestamp_str}:{now}")
+                logging.debug(f"Version cache expired: {timestamp_str}:{now}")
                 return None
 
             return latest_version_str
 
-    util.debug_print("Version cache does not exist")
+    logging.debug("Version cache does not exist")
     return None
 
 
@@ -107,7 +110,7 @@ def is_running_latest(version_cache_path: Path = VERSION_CACHE_PATH) -> bool:
         latest_version = Version(latest_version_str)
         current_version = Version(constants.__VERSION__)
     except InvalidVersion as e:
-        util.debug_print(f"Invalid version string: {e}")
+        logging.debug(f"Invalid version string: {e}")
         return False
 
     if current_version < latest_version:
